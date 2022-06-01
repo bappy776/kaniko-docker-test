@@ -1,0 +1,56 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-api
+  namespace: test-api
+  labels:
+    app: test-api
+spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: test-api
+    template:
+      metadata:
+        labels:
+          app: test-api
+      spec:
+        imagePullSecrets:
+        - name: regcred
+        containers:
+        - name: test-api-container
+          image: abappy/test-api:0.1
+          imagePullPolicy: Always
+          env:
+          - name: MIGRATE_PROCESS_TIME
+            value: "120"
+          startupProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - |
+                ps -C migrate_db >/dev/null
+                if [ $? -ne 0 ]
+                then
+                    curl https://www.google.com.au
+                else
+                    echo "Migration is running"
+                    exit 1
+                fi
+            failureThreshold: 30
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command:
+              - curl
+              - https://www.google.com.au
+            failureThreshold: 60
+            periodSeconds: 2
+            initialDelaySeconds: 10
+          readinessProbe:
+            exec:
+              command:
+              - curl
+              - https://www.google.com.au
